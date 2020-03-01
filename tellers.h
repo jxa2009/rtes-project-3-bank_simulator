@@ -2,6 +2,13 @@
 #define TELLERS_H
 
 #include "breaks.h"
+
+typedef enum Status_E
+{
+    Busy,
+    Idle,
+    Break,
+} StatusE;
 /**
  * Struct for an individual teller
  * [unsigned int] Total_Served       - Amount of customers served by teller
@@ -9,9 +16,7 @@
  * [unsigned int] Total_Time_Waiting - Amount of time teller spends waiting to serve a customer
  * 
  * [BreakS*] Break                   - Pointer to a break for a teller
- * [unsigned char] Serving           - Boolean variable to represent if the teller is serving a custerom - 
- *                                     0 if not serving
- *                                     1 if serving
+ * [StatusE] Status                  - Enum to represent the current status of the teller
  * [unsigned int] Time_Until_Break   - Amount of time until the teller can take a break 
  * */
 typedef struct Teller_S
@@ -23,7 +28,7 @@ typedef struct Teller_S
 
     // Active Information    
     BreakS* Break; 
-    unsigned char Serving;
+    StatusE Status;
     unsigned int Time_Until_Break;
 } TellerS;
 

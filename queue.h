@@ -36,8 +36,8 @@ typedef struct Queue_S
 
 void InitQueue(QueueS* QueuePtr);
 void Enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr);
-Queue_NodeS* Dequeue(QueueS* QueuePtr);
+CustomerS* Dequeue(QueueS* QueuePtr);
 void DestroyQueue(QueueS* QueuePtr);
-
+void Add_Customer();
 
 #endif
