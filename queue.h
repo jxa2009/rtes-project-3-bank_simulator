@@ -3,41 +3,47 @@
 
 #include "customers.h"
 
+#define MIN_ENTER_QUEUE_TIME  (60)
+#define MAX_ENTER_QUEUE_TIME  (240)
+#define DIFF_ENTER_QUEUE_TIME (180)
+static QueueS CustomerQueue;
+
 /**
  * Struct to represent a single queue node
  * Queue will be singly linked
- * [CustomerS*] Customer - Pointer to customer struct which will hold the information for each individual customer
- * [Queue_NodeS*] Next_Node - Pointer to the next node, the next node will be served before the current node
+ * [CustomerS*] customer - Pointer to customer struct which will hold the information for each individual customer
+ * [Queue_NodeS*] next_node - Pointer to the next node, the next node will be served before the current node
  * */
 typedef struct Queue_Node_S
 {
-    CustomerS* Customer;
-    struct Queue_Node_S* Next_Node;
+    CustomerS* customer;
+    struct Queue_Node_S* next_node;
 } Queue_NodeS;
 
 /**
  * Struct to hold information regarding a queue
  * [unsigned int] size - Amount of items in the queue
- * [Queue_NodeS*] Front_Node - Pointer to a queue node that represents the front of the queue (last in)
- * [Queue_NodeS*] Bacl_Node - Pointer to a queue node that represents the front of the queue (last in)
+ * [Queue_NodeS*] front_node - Pointer to a queue node that represents the front of the queue (last in)
+ * [Queue_NodeS*] back_node - Pointer to a queue node that represents the front of the queue (last in)
  * */
 typedef struct Queue_S
 {
     // Metrics
-    unsigned int Max_Depth;
-    unsigned int Max_Wait_Time;
+    unsigned int max_depth;
+    unsigned int max_wait_time;
     
     // Active information
-    unsigned int Size;
-    unsigned int Current_Wait_Time;
-    Queue_NodeS* Front_Node;
-    Queue_NodeS* Back_Node;
+    unsigned int size;
+    unsigned int current_wait_time;
+    Queue_NodeS* front_node;
+    Queue_NodeS* back_node;
 } QueueS;
 
 void InitQueue(QueueS* QueuePtr);
 void Enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr);
 CustomerS* Dequeue(QueueS* QueuePtr);
-void DestroyQueue(QueueS* QueuePtr);
+void DestroyQueue(QueueS* QueuePtr); // probably to be removed
 void Add_Customer();
+static unsigned int generate_time_for_new_cust(void);
 
 #endif

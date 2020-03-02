@@ -4,7 +4,6 @@
 #include "queue.h"
 #include "customers.h"
 
-static QueueS CustomerQueue;
 
 /**
  * GENERAL QUEUE FLOW
@@ -15,7 +14,6 @@ static QueueS CustomerQueue;
  *          Enqueues the customer
  * */
 
-
 /**
  * Initializes the queue struct
  * Sets values to 0 or NULL
@@ -25,14 +23,14 @@ static QueueS CustomerQueue;
 void InitQueue(QueueS* QueuePtr)
 {
     //Metric information init
-    QueuePtr->Max_Depth = 0;
-    QueuePtr->Max_Wait_Time = 0;
+    QueuePtr->max_depth = 0;
+    QueuePtr->max_wait_time = 0;
 
     //Active information init
-    QueuePtr->Size = 0;
-    QueuePtr->Current_Wait_Time = 0;
-    QueuePtr->Front_Node = NULL;
-    QueuePtr->Back_Node = NULL;
+    QueuePtr->size = 0;
+    QueuePtr->current_wait_time = 0;
+    QueuePtr->front_node = NULL;
+    QueuePtr->back_node = NULL;
 }
 
 /**
@@ -43,19 +41,19 @@ void InitQueue(QueueS* QueuePtr)
  * */
 void Enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr)
 {
-    if (QueuePtr->Size == 0)
+    if (QueuePtr->size == 0)
     {
-        NodePtr->Next_Node = NULL;
-        QueuePtr->Back_Node = NodePtr;
-        QueuePtr->Front_Node = NodePtr;
+        NodePtr->next_node = NULL;
+        QueuePtr->back_node = NodePtr;
+        QueuePtr->front_node = NodePtr;
     }
     else
     {
-        NodePtr->Next_Node = NULL;
-        QueuePtr->Back_Node->Next_Node = NodePtr;
+        NodePtr->next_node = NULL;
+        QueuePtr->back_node->next_node = NodePtr;
         
     }
-    QueuePtr->Size++;   
+    QueuePtr->size++;   
 }
 
 /**
@@ -67,21 +65,22 @@ void Enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr)
 CustomerS* Dequeue(QueueS* QueuePtr)
 {
     // If the queue is a single item
-    if (QueuePtr->Size > 0)
+    if (QueuePtr->size > 0)
     {
-        Queue_NodeS* Old_Head = QueuePtr->Front_Node;
-        CustomerS* Customer = Old_Head->Customer;
-        if(QueuePtr->Size == 1)
+        Queue_NodeS* old_head = QueuePtr->front_node;
+        CustomerS* customer = old_head->customer;
+        if(QueuePtr->size == 1)
         {
-            QueuePtr->Front_Node = NULL;
-            QueuePtr->Back_Node = NULL;
+            QueuePtr->front_node = NULL;
+            QueuePtr->back_node = NULL;
         }
-        else if (QueuePtr->Size > 1)
+        else if (QueuePtr->size > 1)
         {
-            QueuePtr->Front_Node = QueuePtr->Front_Node->Next_Node;
+            QueuePtr->front_node = QueuePtr->front_node->next_node;
         }
-        QueuePtr->Size--;
-        return Customer;
+        QueuePtr->size--;
+        free(old_head);
+        return customer;
     }
     return NULL;
 }
@@ -94,11 +93,42 @@ CustomerS* Dequeue(QueueS* QueuePtr)
 void Add_Customer()
 {
     // Allocate Node
-    Queue_NodeS* New_Node = malloc(sizeof(Queue_NodeS));
+    Queue_NodeS* new_node = malloc(sizeof(Queue_NodeS));
 
     // Create new customer to be added
-    CustomerS* New_Customer = Generate_Customer();
-    New_Node->Customer = New_Customer;
+    CustomerS* new_customer = Generate_Customer();
+    new_node->customer = new_customer;
+    Enqueue(&CustomerQueue, new_node);
+    CustomerQueue.size++;
+    CustomerQueue.current_wait_time += new_customer->interaction_time;
+    if (CustomerQueue.size > CustomerQueue.max_depth)
+    {
+        CustomerQueue.max_depth = CustomerQueue.size;
+    }
 
-    Enqueue(&CustomerQueue, New_Node);
+    if (CustomerQueue.current_wait_time > CustomerQueue.max_wait_time)
+    {
+        CustomerQueue.max_wait_time = CustomerQueue.current_wait_time;
+    }
+
+}
+
+void Queue_Task(void* vpParameter)
+{
+    unsigned int time_for_new_cust = generate_time_for_new_cust();
+
+    // Lock queue
+    Add_Customer();
+    // Unlock queue
+}
+
+/**
+ * Generates a time between 1 minute and 4 minutes
+ * Inputs: None
+ * Outputs: The time generated
+ * */
+static unsigned int generate_time_for_new_cust(void)
+{
+    unsigned int random_time = rng function
+    return (random_time % DIFF_INTERACTION_TIME) + MIN_ENTER_QUEUE_TIME;
 }
