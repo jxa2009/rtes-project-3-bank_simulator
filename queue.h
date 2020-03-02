@@ -8,6 +8,7 @@
 #define DIFF_ENTER_QUEUE_TIME (180)
 static QueueS CustomerQueue;
 
+static int master_timer;
 /**
  * Struct to represent a single queue node
  * Queue will be singly linked

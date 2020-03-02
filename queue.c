@@ -28,7 +28,7 @@ void InitQueue(QueueS* QueuePtr)
 
     //Active information init
     QueuePtr->size = 0;
-    QueuePtr->current_wait_time = 0;
+    QueuePtr->current_wait_time = generate_time_for_new_cust();;
     QueuePtr->front_node = NULL;
     QueuePtr->back_node = NULL;
 }
@@ -115,11 +115,16 @@ void Add_Customer()
 
 void Queue_Task(void* vpParameter)
 {
-    unsigned int time_for_new_cust = generate_time_for_new_cust();
+    if(master_timer >= CustomerQueue.wait_time )
+    {
 
     // Lock queue
+    unsigned int time_for_new_cust = generate_time_for_new_cust();
+    CustomerQueue.wait_time = time_for_new_cust + master_timer;
     Add_Customer();
     // Unlock queue
+    }
+    
 }
 
 /**
