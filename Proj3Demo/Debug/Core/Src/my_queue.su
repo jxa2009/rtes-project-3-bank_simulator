@@ -1,5 +1,6 @@
-my_queue.c:23:6:InitQueue	16	static
-my_queue.c:42:6:Enqueue	16	static
-my_queue.c:65:12:Dequeue	24	static
-my_queue.c:93:6:Add_Customer	24	static
-my_queue.c:146:14:generate_time_for_new_cust	16	static
+my_queue.c:23:6:init_queue	16	static
+my_queue.c:42:6:enqueue	16	static
+my_queue.c:65:12:dequeue	24	static
+my_queue.c:93:6:add_customer	24	static
+my_queue.c:122:14:generate_time_for_new_cust	16	static
+my_queue.c:132:5:is_empty	16	static

@@ -14,7 +14,7 @@
  * [TellerS*] teller - pointer to a teller
  * [uint16_t] id     - Id number to initialize the teller with
  * */
-void init_teller(TellerS* teller,uint16_t id)
+void init_teller(TellerS* teller,uint16_t id, unsigned int random_time)
 {
     teller->total_served = 0;
     teller->total_time_served = 0;
@@ -23,7 +23,7 @@ void init_teller(TellerS* teller,uint16_t id)
     teller->busy_time = 0;
     teller->break_info = (BreakS*) malloc(sizeof(BreakS));
     teller->status = idle;
-    teller->time_until_break = 0;
+    teller->time_until_break = generate_time_until_break(random_time);
 }
 
 /*void Teller_Task(void *vpParameter)

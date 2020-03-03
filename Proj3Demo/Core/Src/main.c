@@ -65,21 +65,21 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t TellerThread1Handle;
 const osThreadAttr_t TellerThread1_attributes = {
   .name = "TellerThread1",
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityNormal,
   .stack_size = 256
 };
 /* Definitions for TellerThread2 */
 osThreadId_t TellerThread2Handle;
 const osThreadAttr_t TellerThread2_attributes = {
   .name = "TellerThread2",
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityNormal,
   .stack_size = 256
 };
 /* Definitions for TellerThread3 */
 osThreadId_t TellerThread3Handle;
 const osThreadAttr_t TellerThread3_attributes = {
   .name = "TellerThread3",
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityNormal,
   .stack_size = 256
 };
 /* Definitions for queue_mutex */
@@ -643,8 +643,10 @@ uint8_t buffer[64];
 unsigned int random_time;
 HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
 init_queue(&customer_queue,random_time);
+
   for(;;)
   {
+	  break;
 	  /*
 	  uint32_t rand;
 	  HAL_RNG_GenerateRandomNumber(&hrng, &rand);
@@ -723,12 +725,20 @@ void StartTask03(void *argument)
   uint8_t buffer[64];
   unsigned int random_time;
   static TellerS teller;
-  init_teller(&teller,TELLER_1);
-
+  HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
+  init_teller(&teller,TELLER_1,random_time);
+  sprintf(buffer,"Teller 1 initialized\r\n");
+  HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+  add_customer(&customer_queue,random_time);
+  add_customer(&customer_queue,random_time);
+  add_customer(&customer_queue,random_time);
+  add_customer(&customer_queue,random_time);
+  add_customer(&customer_queue,random_time);
   for(;;)
   {
+
     // If it is the end of the and there are no more customers to serve
-    if (master_timer > MAX_TIME && isEmpty(&customer_queue))
+    if (master_timer > MAX_TIME && is_empty(&customer_queue))
     {
       break;
     }
@@ -736,7 +746,7 @@ void StartTask03(void *argument)
     {
         // If the teller can, they should go on break
         // The time until break is the time at which the master_timer will be at when they can take a break
-        if(teller.time_until_break >= master_timer)
+        if( master_timer>= teller.time_until_break)
         {
             HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
             unsigned int init_time_waiting= generate_break_length(random_time);
@@ -764,7 +774,10 @@ void StartTask03(void *argument)
 
               // Fix the current wait time for when new customers are being added
               customer_queue.current_wait_time -= customer->interaction_time;
-              
+
+              sprintf(buffer,"Teller 1 serving a customer \r\n");
+			  HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+
               // Free up the space occupied by the customer
               free(customer);
 
@@ -774,7 +787,7 @@ void StartTask03(void *argument)
         }
         
     }
-    else if (teller.status = busy)
+    else if (busy == teller.status)
     {
         if(master_timer >= teller.busy_time)
         {
@@ -791,7 +804,7 @@ void StartTask03(void *argument)
         }
     }
 
-    sprintf(buffer,"Number of people served by teller %d: %u\r\n", TELLER_1, teller.total_served);
+    sprintf(buffer,"Number of people served by teller 1: %u\r\n", teller.total_served);
     HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
   }
   /* USER CODE END StartTask03 */

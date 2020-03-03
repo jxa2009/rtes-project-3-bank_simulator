@@ -44,8 +44,8 @@ Proj3Demo.bin \
 all: Proj3Demo.elf secondary-outputs
 
 # Tool invocations
-Proj3Demo.elf: $(OBJS) $(USER_OBJS) C:\Users\mmk7218\Desktop\Repositories\project3\Proj3Demo\STM32L476VGTX_FLASH.ld
-	arm-none-eabi-gcc -o "Proj3Demo.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\mmk7218\Desktop\Repositories\project3\Proj3Demo\STM32L476VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Proj3Demo.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Proj3Demo.elf: $(OBJS) $(USER_OBJS) C:\Users\mmk7218\Desktop\Repositories\rtes-project-3-bank_simulator\Proj3Demo\STM32L476VGTX_FLASH.ld
+	arm-none-eabi-gcc -o "Proj3Demo.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\mmk7218\Desktop\Repositories\rtes-project-3-bank_simulator\Proj3Demo\STM32L476VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Proj3Demo.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

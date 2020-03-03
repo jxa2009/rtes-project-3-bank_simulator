@@ -93,7 +93,7 @@ CustomerS* dequeue(QueueS* QueuePtr)
 void add_customer(QueueS* queue_ptr,unsigned int random_time)
 {
     // Allocate Node
-    Queue_NodeS* new_node = malloc(sizeof(Queue_NodeS));
+    Queue_NodeS* new_node = (Queue_NodeS*) malloc(sizeof(Queue_NodeS));
 
     // Create new customer to be added
     CustomerS* new_customer = Generate_Customer(random_time);
