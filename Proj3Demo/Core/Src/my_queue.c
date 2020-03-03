@@ -119,17 +119,21 @@ void add_customer(QueueS* queue_ptr,unsigned int random_time)
  * Inputs: None
  * Outputs: The time generated
  * */
-//static unsigned int generate_time_for_new_cust(void)
-//{
-//    unsigned int random_time = ;
-//    return (random_time % DIFF_INTERACTION_TIME) + MIN_ENTER_QUEUE_TIME;
-//}
-/**
- * Generates a time between 1 minute and 4 minutes
- * Inputs: None
- * Outputs: The time generated
- * */
 unsigned int generate_time_for_new_cust(unsigned int random_time)
 {
     return (random_time % DIFF_INTERACTION_TIME) + MIN_ENTER_QUEUE_TIME;
+}
+
+/**
+ * Determines if the given queue is empty
+ * Inputs: None
+ * Returns: 1 if queue is empty 0 if not
+ * */
+int is_empty(QueueS* queue_ptr)
+{
+    if(queue_ptr->size == 0)
+    {
+        return 1;
+    }
+    return 0;
 }

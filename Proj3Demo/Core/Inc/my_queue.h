@@ -52,5 +52,6 @@ CustomerS* dequeue(QueueS* QueuePtr);
 void destroy_queue(QueueS* QueuePtr); // probably to be removed
 void add_customer(QueueS* queue_ptr,unsigned int random_time);
 unsigned int generate_time_for_new_cust(unsigned int random_time);
+int is_empty(QueueS* queue_ptr)
 
 #endif

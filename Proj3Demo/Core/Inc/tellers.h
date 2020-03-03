@@ -3,6 +3,9 @@
 
 #include "breaks.h"
 
+#define TELLER_1 (1)
+#define TELLER_2 (2)
+#define TELLER_3 (3)
 typedef enum Status_E
 {
     busy,
