@@ -14,7 +14,7 @@
 
 /**
  * Struct to represent a single customer
- * 
+ * [unsigned int] interaction_time - amount of time they will spend interacting with the teller
  * */
 typedef struct Customer_S
 {

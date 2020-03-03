@@ -642,7 +642,7 @@ void StartDefaultTask(void *argument)
 uint8_t buffer[64];
 unsigned int random_time;
 HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
-InitQueue(&customer_queue,random_time);
+init_queue(&customer_queue,random_time);
   for(;;)
   {
 	  /*
@@ -676,7 +676,7 @@ InitQueue(&customer_queue,random_time);
 
 
 			HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
-			Add_Customer(&customer_queue,random_time);
+			add_customer(&customer_queue,random_time);
 			// Unlock queue
 			osSemaphoreRelease (myBinarySem01Handle);
 		}

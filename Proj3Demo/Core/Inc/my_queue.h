@@ -6,7 +6,7 @@
 #define MIN_ENTER_QUEUE_TIME  (60)
 #define MAX_ENTER_QUEUE_TIME  (240)
 #define DIFF_ENTER_QUEUE_TIME (180)
-//static QueueS CustomerQueue;
+
 
 //static int master_timer;
 /**
@@ -23,7 +23,12 @@ typedef struct Queue_Node_S
 
 /**
  * Struct to hold information regarding a queue
+ * [unsigned int] max_depth - maximum size the queue hit at one point
+ * [unsigned int] max_wait_time - The longest amount of a time a customer had to wait to be served
+ * 
  * [unsigned int] size - Amount of items in the queue
+ * [unsigned int] time_for_new_customer - Randomized value representing when a new customer will enter the queue
+ * [unsigned int] current_wait_time - Wait time for a customer to be served when they join to get served
  * [Queue_NodeS*] front_node - Pointer to a queue node that represents the front of the queue (last in)
  * [Queue_NodeS*] back_node - Pointer to a queue node that represents the front of the queue (last in)
  * */
@@ -41,11 +46,11 @@ typedef struct Queue_S
     Queue_NodeS* back_node;
 } QueueS;
 
-void InitQueue(QueueS* QueuePtr,unsigned int random_time);
-void Enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr);
-CustomerS* Dequeue(QueueS* QueuePtr);
-void DestroyQueue(QueueS* QueuePtr); // probably to be removed
-void Add_Customer(QueueS* queue_ptr,unsigned int random_time);
+void init_queue(QueueS* QueuePtr,unsigned int random_time);
+void enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr);
+CustomerS* dequeue(QueueS* QueuePtr);
+void destroy_queue(QueueS* QueuePtr); // probably to be removed
+void add_customer(QueueS* queue_ptr,unsigned int random_time);
 unsigned int generate_time_for_new_cust(unsigned int random_time);
 
 #endif

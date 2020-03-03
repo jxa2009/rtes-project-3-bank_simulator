@@ -14,7 +14,7 @@
  * [TellerS*] teller - pointer to a teller
  * [uint16_t] id     - Id number to initialize the teller with
  * */
-void Init_Teller(TellerS* teller,uint16_t id)
+void init_teller(TellerS* teller,uint16_t id)
 {
     teller->total_served = 0;
     teller->total_time_served = 0;
@@ -49,9 +49,9 @@ void Init_Teller(TellerS* teller,uint16_t id)
         }
         // Lock the queue info
 
-        if(CustomerQueue.size > 0)
+        if(customer_queue.size > 0)
         {
-            CustomerS* customer = Dequeue(&CustomerQueue);
+            CustomerS* customer = dequeue(&customer_queue);
             teller.total_served++;
             teller.total_time_served += customer->interaction_time;
             teller.busy_time = master_timer + customer->interaction_time;
@@ -60,7 +60,7 @@ void Init_Teller(TellerS* teller,uint16_t id)
             teller.time_finished_task = 0;
 
             // Fix the current wait time for when new customers are being added
-            CustomerQueue.current_wait_time -= customer->interaction_time;
+            customer_queue.current_wait_time -= customer->interaction_time;
             free(customer);
         }
         // Unlock queue

@@ -20,7 +20,7 @@
  * [QueueS*] QueuePtr - Pointer to a queue to initialize
  * Returns: NULL
  * */
-void InitQueue(QueueS* QueuePtr,unsigned int random_time)
+void init_queue(QueueS* QueuePtr,unsigned int random_time)
 {
     //Metric information init
     QueuePtr->max_depth = 0;
@@ -39,7 +39,7 @@ void InitQueue(QueueS* QueuePtr,unsigned int random_time)
  * [QueueS*] NodePtr  - Pointer to a node to add the back of the queue (back of the line)
  *  Returns: NULL
  * */
-void Enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr)
+void enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr)
 {
     if (QueuePtr->size == 0)
     {
@@ -62,7 +62,7 @@ void Enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr)
  * Returns:
  *          Pointer to the removed data from node OR NULL if empty queue
  * */
-CustomerS* Dequeue(QueueS* QueuePtr)
+CustomerS* dequeue(QueueS* QueuePtr)
 {
     // If the queue is a single item
     if (QueuePtr->size > 0)
@@ -90,7 +90,7 @@ CustomerS* Dequeue(QueueS* QueuePtr)
  * Inputs: None
  * Returns: None
  * */
-void Add_Customer(QueueS* queue_ptr,unsigned int random_time)
+void add_customer(QueueS* queue_ptr,unsigned int random_time)
 {
     // Allocate Node
     Queue_NodeS* new_node = malloc(sizeof(Queue_NodeS));
@@ -98,7 +98,7 @@ void Add_Customer(QueueS* queue_ptr,unsigned int random_time)
     // Create new customer to be added
     CustomerS* new_customer = Generate_Customer(random_time);
     new_node->customer = new_customer;
-    Enqueue(queue_ptr, new_node);
+    enqueue(queue_ptr, new_node);
 
    queue_ptr->current_wait_time += new_customer->interaction_time;
     if (queue_ptr->size > queue_ptr->max_depth)
@@ -113,20 +113,6 @@ void Add_Customer(QueueS* queue_ptr,unsigned int random_time)
 
 }
 
-/*
-void Queue_Task(void* vpParameter)
-{
-    if(master_timer >= queue_ptr.wait_time )
-    {
-
-    // Lock queue
-    unsigned int time_for_new_cust = generate_time_for_new_cust();
-    queue_ptr.wait_time = time_for_new_cust + master_timer;
-    Add_Customer();
-    // Unlock queue
-    }
-    
-}*/
 
 /**
  * Generates a time between 1 minute and 4 minutes

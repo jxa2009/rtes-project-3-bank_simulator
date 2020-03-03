@@ -39,7 +39,7 @@ typedef struct Teller_S
     unsigned int time_until_break;
 } TellerS;
 
-void Init_Teller(TellerS* teller, uint16_t id);
+void init_teller(TellerS* teller, uint16_t id);
 //void Teller_Task(void *vpParameter); probably to be removed
 
 
