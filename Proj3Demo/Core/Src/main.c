@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "my_queue.h"
+#include "tellers.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -37,6 +39,7 @@ typedef StaticSemaphore_t osStaticMutexDef_t;
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define MAX_TIME (25200)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,20 +59,34 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 128
+  .stack_size = 256
 };
-/* Definitions for myTask02 */
-osThreadId_t myTask02Handle;
-const osThreadAttr_t myTask02_attributes = {
-  .name = "myTask02",
+/* Definitions for TellerThread1 */
+osThreadId_t TellerThread1Handle;
+const osThreadAttr_t TellerThread1_attributes = {
+  .name = "TellerThread1",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 128
+  .stack_size = 256
 };
-/* Definitions for myMutex01 */
-osMutexId_t myMutex01Handle;
+/* Definitions for TellerThread2 */
+osThreadId_t TellerThread2Handle;
+const osThreadAttr_t TellerThread2_attributes = {
+  .name = "TellerThread2",
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 256
+};
+/* Definitions for TellerThread3 */
+osThreadId_t TellerThread3Handle;
+const osThreadAttr_t TellerThread3_attributes = {
+  .name = "TellerThread3",
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 256
+};
+/* Definitions for queue_mutex */
+osMutexId_t queue_mutexHandle;
 osStaticMutexDef_t myMutex01ControlBlock;
-const osMutexAttr_t myMutex01_attributes = {
-  .name = "myMutex01",
+const osMutexAttr_t queue_mutex_attributes = {
+  .name = "queue_mutex",
   .cb_mem = &myMutex01ControlBlock,
   .cb_size = sizeof(myMutex01ControlBlock),
 };
@@ -79,7 +96,7 @@ const osSemaphoreAttr_t myBinarySem01_attributes = {
   .name = "myBinarySem01"
 };
 /* USER CODE BEGIN PV */
-
+static QueueS customer_queue;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -90,6 +107,8 @@ static void MX_RNG_Init(void);
 static void MX_TIM2_Init(void);
 void StartDefaultTask(void *argument);
 void StartTask02(void *argument);
+void StartTask03(void *argument);
+void StartTask04(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -138,8 +157,8 @@ int main(void)
   /* Init scheduler */
   osKernelInitialize();
   /* Create the mutex(es) */
-  /* creation of myMutex01 */
-  myMutex01Handle = osMutexNew(&myMutex01_attributes);
+  /* creation of queue_mutex */
+  queue_mutexHandle = osMutexNew(&queue_mutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -165,8 +184,14 @@ int main(void)
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of myTask02 */
-  myTask02Handle = osThreadNew(StartTask02, NULL, &myTask02_attributes);
+  /* creation of TellerThread1 */
+  TellerThread1Handle = osThreadNew(StartTask02, NULL, &TellerThread1_attributes);
+
+  /* creation of TellerThread2 */
+  TellerThread2Handle = osThreadNew(StartTask03, NULL, &TellerThread2_attributes);
+
+  /* creation of TellerThread3 */
+  TellerThread3Handle = osThreadNew(StartTask04, NULL, &TellerThread3_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -305,7 +330,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 13332;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 1000;
+  htim2.Init.Period = 10;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -596,6 +621,11 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+
+
+
+
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -609,8 +639,13 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
+uint8_t buffer[64];
+unsigned int random_time;
+HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
+InitQueue(&customer_queue,random_time);
   for(;;)
   {
+	  /*
 	  uint32_t rand;
 	  HAL_RNG_GenerateRandomNumber(&hrng, &rand);
 	  osDelay(1000);
@@ -618,7 +653,40 @@ void StartDefaultTask(void *argument)
 	  //HAL_UART_Receive(&huart2, buffer, sizeof(buffer), HAL_MAX_DELAY);
 	  sprintf(buffer,"%u\r\n",rand);
 	  HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+	  */
+
+	if(master_timer > MAX_TIME)
+	{
+		sprintf(buffer,"Time exceeded 4:00 pm\r\n");
+		HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+		break;
+	}
+	if(master_timer >= customer_queue.time_for_new_customer)
+	{
+		sprintf(buffer,"Current size of queue: %u\r\n", customer_queue.size);
+		HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+		if (myBinarySem01Handle != NULL && osSemaphoreAcquire(myBinarySem01Handle,0) == osOK)
+		{
+
+			// Lock queue
+
+			HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
+			unsigned int time_for_new_cust = generate_time_for_new_cust(random_time);
+			customer_queue.time_for_new_customer = time_for_new_cust + master_timer;
+
+
+			HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
+			Add_Customer(&customer_queue,random_time);
+			// Unlock queue
+			osSemaphoreRelease (myBinarySem01Handle);
+		}
+	}
   }
+  //customer_queue.max_depth;
+
+
+  sprintf(buffer,"Maximum depth of queue: %u\r\n", customer_queue.max_depth);
+  HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
   /* USER CODE END 5 */ 
 }
 
@@ -636,10 +704,46 @@ void StartTask02(void *argument)
   for(;;)
   {
 	  osDelay(1000);
-	  uint8_t buffer[16]="ThreadCall\r\n";
-	  HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+	  //uint8_t buffer[16]="ThreadCall\r\n";
+	  //HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
   }
   /* USER CODE END StartTask02 */
+}
+
+/* USER CODE BEGIN Header_StartTask03 */
+/**
+* @brief Function implementing the TellerThread2 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTask03 */
+void StartTask03(void *argument)
+{
+  /* USER CODE BEGIN StartTask03 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartTask03 */
+}
+
+/* USER CODE BEGIN Header_StartTask04 */
+/**
+* @brief Function implementing the TellerThread3 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTask04 */
+void StartTask04(void *argument)
+{
+  /* USER CODE BEGIN StartTask04 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartTask04 */
 }
 
 /**

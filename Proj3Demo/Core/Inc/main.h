@@ -42,7 +42,7 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-int count;
+uint32_t master_timer;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/

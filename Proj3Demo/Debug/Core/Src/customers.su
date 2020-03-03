@@ -1,0 +1,2 @@
+customers.c:8:12:Generate_Customer	24	static
+customers.c:20:21:generate_interaction_time	16	static
