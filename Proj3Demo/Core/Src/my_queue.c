@@ -25,10 +25,14 @@ void init_queue(QueueS* QueuePtr,unsigned int random_time)
     //Metric information init
     QueuePtr->max_depth = 0;
     QueuePtr->max_wait_time = 0;
+    QueuePtr->max_size = 0;
+    QueuePtr->total_wait_time = 0;
+    QueuePtr->total_interaction_time = 0;
 
     //Active information init
     QueuePtr->size = 0;
-    QueuePtr->current_wait_time = generate_time_for_new_cust(random_time);
+    QueuePtr->time_for_new_cust = generate_time_for_new_cust(random_time);
+    QueuePtr->current_wait_time = 0;
     QueuePtr->front_node = NULL;
     QueuePtr->back_node = NULL;
 }
@@ -53,7 +57,8 @@ void enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr)
         QueuePtr->back_node->next_node = NodePtr;
         QueuePtr->back_node = NodePtr;
     }
-    QueuePtr->size++;   
+    QueuePtr->size++;
+    QueuePtr->max_size++;
 }
 
 /**
@@ -79,7 +84,7 @@ CustomerS* dequeue(QueueS* QueuePtr)
             QueuePtr->front_node = QueuePtr->front_node->next_node;
         }
         QueuePtr->size--;
-        free(old_head);
+        vPortFree(old_head);
         return customer;
     }
     return NULL;
@@ -93,7 +98,11 @@ CustomerS* dequeue(QueueS* QueuePtr)
 void add_customer(QueueS* queue_ptr,unsigned int random_time)
 {
     // Allocate Node
-    Queue_NodeS* new_node = (Queue_NodeS*) malloc(sizeof(Queue_NodeS));
+    Queue_NodeS* new_node = (Queue_NodeS*) pvPortMalloc(sizeof(Queue_NodeS));
+    if(new_node == NULL){
+    	int x = 0;
+    	return;
+    }
 
     // Create new customer to be added
     CustomerS* new_customer = Generate_Customer(random_time);
@@ -101,6 +110,8 @@ void add_customer(QueueS* queue_ptr,unsigned int random_time)
     enqueue(queue_ptr, new_node);
 
    queue_ptr->current_wait_time += new_customer->interaction_time;
+   queue_ptr->total_wait_time += queue_ptr->current_wait_time;
+   queue_ptr->total_interaction_time += new_customer->interaction_time;
     if (queue_ptr->size > queue_ptr->max_depth)
     {
         queue_ptr->max_depth = queue_ptr->size;

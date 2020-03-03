@@ -7,7 +7,7 @@
  * */
 CustomerS* Generate_Customer(unsigned int random_time)
 {
-    CustomerS* new_customer = (CustomerS*) malloc(sizeof(CustomerS));
+    CustomerS* new_customer = (CustomerS*) pvPortMalloc(sizeof(CustomerS));
     new_customer->interaction_time = generate_interaction_time(random_time);
     return new_customer;
 }

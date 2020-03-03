@@ -25,6 +25,8 @@ typedef struct Queue_Node_S
  * Struct to hold information regarding a queue
  * [unsigned int] max_depth - maximum size the queue hit at one point
  * [unsigned int] max_wait_time - The longest amount of a time a customer had to wait to be served
+ * [unsigned int] max_size - Total amount of customers serviced
+ * [unsigned int] total_waiting_time - Sum of waiting times of each customer.
  * 
  * [unsigned int] size - Amount of items in the queue
  * [unsigned int] time_for_new_customer - Randomized value representing when a new customer will enter the queue
@@ -37,6 +39,9 @@ typedef struct Queue_S
     // Metrics
     unsigned int max_depth;
     unsigned int max_wait_time;
+    unsigned int max_size;
+    unsigned int total_wait_time;
+    unsigned int total_interaction_time;
     
     // Active information
     unsigned int size;
