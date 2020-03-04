@@ -93,7 +93,7 @@ const osSemaphoreAttr_t printBinarySem_attributes = {
 };
 /* USER CODE BEGIN PV */
 static QueueS customer_queue;
-static TellerS tellers[3];
+static TellerS tellers[NUM_TELLERS];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -674,6 +674,7 @@ init_queue(&customer_queue,random_time);
 
 			HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
 			add_customer(&customer_queue,random_time);
+			customer_queue.back_node->customer->time_joined = master_timer;
 			// Unlock queue
 			osSemaphoreRelease (myBinarySem01Handle);
 		}
@@ -697,8 +698,76 @@ while(1)
 		//sprintf(buffer,"Teller 1's number of served customers: %u\r\n",tellers[0].total_served);
 		//HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
 
-		sprintf(buffer,"Average wait time in queue: %u minutes \r\n",(tellers[0].total_wait_time / 60) / (tellers[0].total_served));
+		sprintf(buffer,"Average wait time in queue: %u minutes \r\n",(customer_queue.total_wait_time / 60) / (customer_queue.total_serviced));
 		HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+
+		sprintf(buffer,"Average time with teller: %u minutes \r\n",(customer_queue.total_interaction_time / 60) / (customer_queue.total_serviced));
+		HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+
+		sprintf(buffer,"Max time in queue: %u minutes \r\n", customer_queue.max_wait_time / 60);
+    HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+
+    // Compute max time teller spent waiting for customer
+    unsigned int teller_wait_time = 0;
+    for(int i = 0; i < NUM_TELLERS;i++)
+    {
+      if(tellers[i].max_wait_time > teller_wait_time)
+      {
+        teller_wait_time = tellers[i].max_wait_time;
+      }
+    }
+    sprintf(buffer,"Max teller wait time for customer: %u minutes \r\n", teller_wait_time / 60);
+    HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+
+    unsigned int max_transaction_time = 0;
+    for(int i = 0; i < NUM_TELLERS;i++)
+    {
+      if(tellers[i].max_transaction_time > max_transaction_time)
+      {
+        max_transaction_time = tellers[i].max_transaction_time;
+      }
+    }
+
+    sprintf(buffer,"Max transaction time: %u minutes \r\n", max_transaction_time / 60);
+    HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+
+    sprintf(buffer,"Max depth: %u\r\n", customer_queue.max_depth);
+    HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+
+    sprintf(buffer,"Num breaks taken by teller 1: %u\r\n", tellers[0].break_info->num);
+    HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+    // Teller 2
+    //sprintf(buffer,"Num breaks taken by teller 2: %u\r\n", tellers[1].break_info->num);
+    //HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+    //Teller 3
+    //sprintf(buffer,"Num breaks taken by teller 3: %u\r\n", tellers[2].break_info->num);
+    //HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+    
+
+    
+    //Teller 1
+    sprintf(buffer,"Average length of breaks taken by teller 1: %u\r\n", tellers[0].break_info->total / tellers[0].break_info->num);
+    HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);    
+    //Teller 2
+    // sprintf(buffer,"Average length of breaks taken by teller 2: %u\r\n", tellers[1].break_info->total / tellers[1].break_info->num);
+    // HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);    
+    //Teller 3
+    // sprintf(buffer,"Average length of breaks taken by teller 3: %u\r\n", tellers[2].break_info->total / tellers[2].break_info->num);
+    // HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);    
+
+    // CHANGE 1 TO NUM_TELLERS
+    for(int i = 0; i < 1;i++)
+    {
+      sprintf(buffer,"Length of longest break taken by teller %u: %u\r\n",i+1, tellers[i].break_info->longest);
+      HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);   
+    }
+    
+    // CHANGE 1 TO NUM_TELLERS
+    for(int i = 0; i < 1;i++)
+    {
+      sprintf(buffer,"Length of shortest break taken by teller %u: %u\r\n",i+1, tellers[i].break_info->shortest);
+      HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);   
+    }
 	  osSemaphoreRelease (printBinarySemHandle);
 	}
 }
@@ -761,11 +830,6 @@ void StartTask03(void *argument)
   }
 
 
-  add_customer(&customer_queue,random_time);
-  add_customer(&customer_queue,random_time);
-  add_customer(&customer_queue,random_time);
-  add_customer(&customer_queue,random_time);
-  add_customer(&customer_queue,random_time);
   for(;;)
   {
 
@@ -793,7 +857,7 @@ void StartTask03(void *argument)
             teller->time_until_break = master_timer + generate_time_until_break(random_time);
 
             sprintf(buffer1,"Teller taking break. \r\n");
-		  HAL_UART_Transmit(&huart2, buffer1, strlen((char*)buffer1), HAL_MAX_DELAY);
+		        HAL_UART_Transmit(&huart2, buffer1, strlen((char*)buffer1), HAL_MAX_DELAY);
         }
         // Lock the queue info
         if (myBinarySem01Handle != NULL && osSemaphoreAcquire(myBinarySem01Handle,0) == osOK){
@@ -807,11 +871,22 @@ void StartTask03(void *argument)
               teller->total_time_waiting = master_timer - teller->time_finished_task;
               teller->time_finished_task = 0;
 
-              // Fix the current wait time for when new customers are being added
-              customer_queue.current_wait_time -= customer->interaction_time;
+              if (customer->interaction_time > teller->max_transaction_time)
+              {
+                teller->max_transaction_time = customer->interaction_time;
+              }
 
+              // Wait time for the customer to be serviced
+              customer_queue.current_wait_time = master_timer - customer->time_joined;
+              if (customer_queue.current_wait_time > customer_queue.max_wait_time)
+              {
+                customer_queue.max_wait_time = customer_queue.current_wait_time;
+              }
+
+              // Add the amount of seconds the customer waited in the queue for (current time - time when they joined)
+              customer_queue.total_wait_time += master_timer - customer->time_joined;
               sprintf(buffer1,"Teller 1 serving a customer \r\n");
-			  HAL_UART_Transmit(&huart2, buffer1, strlen((char*)buffer1), HAL_MAX_DELAY);
+			        HAL_UART_Transmit(&huart2, buffer1, strlen((char*)buffer1), HAL_MAX_DELAY);
 
 
               // Free up the space occupied by the customer
@@ -844,8 +919,7 @@ void StartTask03(void *argument)
     //sprintf(buffer,"Number of people served by teller 1: %u\r\n", teller.total_served);
     //HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
   }
-  sprintf(buffer1,"Number of people served by teller 1: %u\r\n", teller->total_served);
-  HAL_UART_Transmit(&huart2, buffer1, strlen((char*)buffer1), HAL_MAX_DELAY);
+
   /* USER CODE END StartTask03 */
 }
 

@@ -14,11 +14,14 @@
 
 /**
  * Struct to represent a single customer
+ * [unsigned int] time_joined - Time at which they entered the queue in terms of the master_timer value
+ * [unsigned int] time_waited - Amount of time they waited in the queue
  * [unsigned int] interaction_time - amount of time they will spend interacting with the teller
  * */
 typedef struct Customer_S
 {
-    unsigned int wait_time; // probably to be removed
+    unsigned int time_joined; // Time joined
+    unsigned int time_waited; // prob to be removed?
     unsigned int interaction_time;
 } CustomerS;
 

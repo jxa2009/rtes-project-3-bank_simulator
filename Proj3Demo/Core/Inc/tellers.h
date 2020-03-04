@@ -2,7 +2,7 @@
 #define TELLERS_H
 
 #include "breaks.h"
-
+#define NUM_TELLERS (3)
 #define TELLER_1 (1)
 #define TELLER_2 (2)
 #define TELLER_3 (3)
@@ -30,6 +30,8 @@ typedef struct Teller_S
     unsigned int total_served;
     unsigned int total_time_served;
     unsigned int total_time_waiting;
+    unsigned int max_transaction_time;
+    unsigned int max_wait_time;
 
     // Active Information    
     uint16_t teller_id;

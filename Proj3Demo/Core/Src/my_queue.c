@@ -26,12 +26,13 @@ void init_queue(QueueS* QueuePtr,unsigned int random_time)
     QueuePtr->max_depth = 0;
     QueuePtr->max_wait_time = 0;
     QueuePtr->max_size = 0;
+    QueuePtr->total_serviced = 0;
     QueuePtr->total_wait_time = 0;
     QueuePtr->total_interaction_time = 0;
 
     //Active information init
     QueuePtr->size = 0;
-    QueuePtr->time_for_new_cust = generate_time_for_new_cust(random_time);
+    QueuePtr->time_for_new_customer = generate_time_for_new_cust(random_time);
     QueuePtr->current_wait_time = 0;
     QueuePtr->front_node = NULL;
     QueuePtr->back_node = NULL;
@@ -58,7 +59,7 @@ void enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr)
         QueuePtr->back_node = NodePtr;
     }
     QueuePtr->size++;
-    QueuePtr->max_size++;
+    QueuePtr->total_serviced++;
 }
 
 /**
@@ -106,7 +107,9 @@ void add_customer(QueueS* queue_ptr,unsigned int random_time)
 
     // Create new customer to be added
     CustomerS* new_customer = Generate_Customer(random_time);
+    //new_customer->time_joined = current_time;
     new_node->customer = new_customer;
+
     enqueue(queue_ptr, new_node);
 
    queue_ptr->current_wait_time += new_customer->interaction_time;
@@ -117,10 +120,10 @@ void add_customer(QueueS* queue_ptr,unsigned int random_time)
         queue_ptr->max_depth = queue_ptr->size;
     }
 
-    if (queue_ptr->current_wait_time > queue_ptr->max_wait_time)
-    {
-        queue_ptr->max_wait_time = queue_ptr->current_wait_time;
-    }
+//    if (queue_ptr->current_wait_time > queue_ptr->max_wait_time)
+//    {
+//        queue_ptr->max_wait_time = queue_ptr->current_wait_time;
+//    }
 
 }
 

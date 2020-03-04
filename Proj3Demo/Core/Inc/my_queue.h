@@ -40,6 +40,7 @@ typedef struct Queue_S
     unsigned int max_depth;
     unsigned int max_wait_time;
     unsigned int max_size;
+    unsigned int total_serviced;
     unsigned int total_wait_time;
     unsigned int total_interaction_time;
     
