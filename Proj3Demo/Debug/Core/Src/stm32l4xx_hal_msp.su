@@ -4,4 +4,4 @@ stm32l4xx_hal_msp.c:110:6:HAL_RNG_MspDeInit	16	static
 stm32l4xx_hal_msp.c:132:6:HAL_TIM_Base_MspInit	24	static
 stm32l4xx_hal_msp.c:157:6:HAL_TIM_Base_MspDeInit	16	static
 stm32l4xx_hal_msp.c:182:6:HAL_UART_MspInit	48	static
-stm32l4xx_hal_msp.c:221:6:HAL_UART_MspDeInit	16	static
+stm32l4xx_hal_msp.c:218:6:HAL_UART_MspDeInit	16	static

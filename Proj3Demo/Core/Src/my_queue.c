@@ -100,14 +100,10 @@ void add_customer(QueueS* queue_ptr,unsigned int random_time)
 {
     // Allocate Node
     Queue_NodeS* new_node = (Queue_NodeS*) pvPortMalloc(sizeof(Queue_NodeS));
-    if(new_node == NULL){
-    	int x = 0;
-    	return;
-    }
 
     // Create new customer to be added
     CustomerS* new_customer = Generate_Customer(random_time);
-    //new_customer->time_joined = current_time;
+    
     new_node->customer = new_customer;
 
     enqueue(queue_ptr, new_node);
@@ -115,6 +111,7 @@ void add_customer(QueueS* queue_ptr,unsigned int random_time)
    queue_ptr->current_wait_time += new_customer->interaction_time;
    queue_ptr->total_wait_time += queue_ptr->current_wait_time;
    queue_ptr->total_interaction_time += new_customer->interaction_time;
+
     if (queue_ptr->size > queue_ptr->max_depth)
     {
         queue_ptr->max_depth = queue_ptr->size;

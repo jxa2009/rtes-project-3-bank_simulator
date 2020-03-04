@@ -1,5 +1,5 @@
 #MicroXplorer Configuration settings - do not modify
-FREERTOS.BinarySemaphores01=myBinarySem01,Dynamic,NULL;printBinarySem,Dynamic,NULL
+FREERTOS.BinarySemaphores01=myBinarySem01,Dynamic,NULL;printBinarySem,Dynamic,NULL;rngBinarySem,Dynamic,NULL
 FREERTOS.FootprintOK=true
 FREERTOS.HEAP_NUMBER=4
 FREERTOS.INCLUDE_pcTaskGetTaskName=1
@@ -130,7 +130,6 @@ NVIC.TIM1_UP_TIM16_IRQn=true\:0\:0\:false\:false\:true\:false\:false\:true
 NVIC.TIM2_IRQn=true\:5\:0\:false\:false\:true\:true\:true\:true
 NVIC.TimeBase=TIM1_UP_TIM16_IRQn
 NVIC.TimeBaseIP=TIM1
-NVIC.USART2_IRQn=true\:5\:0\:false\:false\:true\:true\:true\:true
 NVIC.UsageFault_IRQn=true\:0\:0\:false\:false\:true\:false\:true\:false
 PA0.GPIOParameters=GPIO_PuPd,GPIO_Label,GPIO_Mode
 PA0.GPIO_Label=JOY_CENTER [MT-008A_CENTER]
@@ -773,7 +772,7 @@ TIM2.AutoReloadPreload=TIM_AUTORELOAD_PRELOAD_ENABLE
 TIM2.IPParameters=Prescaler,Period,AutoReloadPreload
 TIM2.Period=10
 TIM2.Prescaler=13332
-USART2.BaudRate=9600
+USART2.BaudRate=115200
 USART2.IPParameters=VirtualMode-Asynchronous,BaudRate
 USART2.VirtualMode-Asynchronous=VM_ASYNC
 VP_FREERTOS_VS_CMSIS_V2.Mode=CMSIS_V2
