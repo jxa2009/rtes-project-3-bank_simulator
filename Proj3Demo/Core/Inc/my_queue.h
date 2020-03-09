@@ -52,10 +52,10 @@ typedef struct Queue_S
     Queue_NodeS* back_node;
 } QueueS;
 
-void init_queue(QueueS* QueuePtr,unsigned int random_time);
-void enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr);
-CustomerS* dequeue(QueueS* QueuePtr);
-void destroy_queue(QueueS* QueuePtr); // probably to be removed
+void init_queue(QueueS* queue_ptr,unsigned int random_time);
+void enqueue(QueueS* queue_ptr, Queue_NodeS* node_ptr);
+CustomerS* dequeue(QueueS* queue_ptr);
+void destroy_queue(QueueS* queue_ptr); // probably to be removed
 void add_customer(QueueS* queue_ptr,unsigned int random_time);
 unsigned int generate_time_for_new_cust(unsigned int random_time);
 int is_empty(QueueS* queue_ptr);

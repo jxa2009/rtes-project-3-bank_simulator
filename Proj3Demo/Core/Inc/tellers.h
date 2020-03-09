@@ -6,6 +6,7 @@
 #define TELLER_1 (1)
 #define TELLER_2 (2)
 #define TELLER_3 (3)
+#define MAX_STATUS_STRING (10)
 typedef enum Status_E
 {
     busy,
@@ -44,6 +45,20 @@ typedef struct Teller_S
     unsigned int time_until_break;
 } TellerS;
 
+typedef struct TellerStatus_S
+{
+    StatusE status;
+    char  status_string[MAX_STATUS_STRING];
+} TellerStatusS;
+
+static const TellerStatusS Teller_Statuses[] =
+{
+    {busy, "busy"},
+    {idle, "idle"},
+    {on_break, "on break"}
+};
+
+static int NUM_STATUSES = sizeof(Teller_Statuses) / sizeof(TellerStatusS);
 void init_teller(TellerS* teller, uint16_t id, unsigned int random_time);
 //void Teller_Task(void *vpParameter); probably to be removed
 

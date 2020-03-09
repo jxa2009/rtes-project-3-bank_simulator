@@ -17,74 +17,74 @@
 /**
  * Initializes the queue struct
  * Sets values to 0 or NULL
- * [QueueS*] QueuePtr - Pointer to a queue to initialize
+ * [QueueS*] queue_ptr - Pointer to a queue to initialize
  * Returns: NULL
  * */
-void init_queue(QueueS* QueuePtr,unsigned int random_time)
+void init_queue(QueueS* queue_ptr,unsigned int random_time)
 {
     //Metric information init
-    QueuePtr->max_depth = 0;
-    QueuePtr->max_wait_time = 0;
-    QueuePtr->max_size = 0;
-    QueuePtr->total_serviced = 0;
-    QueuePtr->total_wait_time = 0;
-    QueuePtr->total_interaction_time = 0;
+    queue_ptr->max_depth = 0;
+    queue_ptr->max_wait_time = 0;
+    queue_ptr->max_size = 0;
+    queue_ptr->total_serviced = 0;
+    queue_ptr->total_wait_time = 0;
+    queue_ptr->total_interaction_time = 0;
 
     //Active information init
-    QueuePtr->size = 0;
-    QueuePtr->time_for_new_customer = generate_time_for_new_cust(random_time);
-    QueuePtr->current_wait_time = 0;
-    QueuePtr->front_node = NULL;
-    QueuePtr->back_node = NULL;
+    queue_ptr->size = 0;
+    queue_ptr->time_for_new_customer = generate_time_for_new_cust(random_time);
+    queue_ptr->current_wait_time = 0;
+    queue_ptr->front_node = NULL;
+    queue_ptr->back_node = NULL;
 }
 
 /**
  * Adds an item to the end of the queue 
- * [QueueS*] QueuePtr - Pointer to a queue to add item to
- * [QueueS*] NodePtr  - Pointer to a node to add the back of the queue (back of the line)
+ * [QueueS*] queue_ptr - Pointer to a queue to add item to
+ * [QueueS*] node_ptr  - Pointer to a node to add the back of the queue (back of the line)
  *  Returns: NULL
  * */
-void enqueue(QueueS* QueuePtr, Queue_NodeS* NodePtr)
+void enqueue(QueueS* queue_ptr, Queue_NodeS* node_ptr)
 {
-    if (QueuePtr->size == 0)
+    if (queue_ptr->size == 0)
     {
-        NodePtr->next_node = NULL;
-        QueuePtr->back_node = NodePtr;
-        QueuePtr->front_node = NodePtr;
+        node_ptr->next_node = NULL;
+        queue_ptr->back_node = node_ptr;
+        queue_ptr->front_node = node_ptr;
     }
     else
     {
-        NodePtr->next_node = NULL;
-        QueuePtr->back_node->next_node = NodePtr;
-        QueuePtr->back_node = NodePtr;
+        node_ptr->next_node = NULL;
+        queue_ptr->back_node->next_node = node_ptr;
+        queue_ptr->back_node = node_ptr;
     }
-    QueuePtr->size++;
-    QueuePtr->total_serviced++;
+    queue_ptr->size++;
+    queue_ptr->total_serviced++;
 }
 
 /**
  * Removes the node from the front of the linked list
- * [QueueS* QueuePtr] - Pointer to a queue
+ * [QueueS* queue_ptr] - Pointer to a queue
  * Returns:
  *          Pointer to the removed data from node OR NULL if empty queue
  * */
-CustomerS* dequeue(QueueS* QueuePtr)
+CustomerS* dequeue(QueueS* queue_ptr)
 {
     // If the queue is a single item
-    if (QueuePtr->size > 0)
+    if (queue_ptr->size > 0)
     {
-        Queue_NodeS* old_head = QueuePtr->front_node;
+        Queue_NodeS* old_head = queue_ptr->front_node;
         CustomerS* customer = old_head->customer;
-        if(QueuePtr->size == 1)
+        if(queue_ptr->size == 1)
         {
-            QueuePtr->front_node = NULL;
-            QueuePtr->back_node = NULL;
+            queue_ptr->front_node = NULL;
+            queue_ptr->back_node = NULL;
         }
-        else if (QueuePtr->size > 1)
+        else if (queue_ptr->size > 1)
         {
-            QueuePtr->front_node = QueuePtr->front_node->next_node;
+            queue_ptr->front_node = queue_ptr->front_node->next_node;
         }
-        QueuePtr->size--;
+        queue_ptr->size--;
         vPortFree(old_head);
         return customer;
     }

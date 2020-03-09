@@ -32,6 +32,7 @@
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
+typedef StaticSemaphore_t osStaticSemaphoreDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -39,6 +40,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define MAX_TIME (25200)
+#define SECONDS_IN_HOUR (3600)
+#define SECONDS_IN_MINUTE (60)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -83,18 +86,27 @@ const osThreadAttr_t TellerThread3_attributes = {
 };
 /* Definitions for myBinarySem01 */
 osSemaphoreId_t myBinarySem01Handle;
+osStaticSemaphoreDef_t myBinarySem01ControlBlock;
 const osSemaphoreAttr_t myBinarySem01_attributes = {
-  .name = "myBinarySem01"
+  .name = "myBinarySem01",
+  .cb_mem = &myBinarySem01ControlBlock,
+  .cb_size = sizeof(myBinarySem01ControlBlock),
 };
 /* Definitions for printBinarySem */
 osSemaphoreId_t printBinarySemHandle;
+osStaticSemaphoreDef_t printBinarySemControlBlock;
 const osSemaphoreAttr_t printBinarySem_attributes = {
-  .name = "printBinarySem"
+  .name = "printBinarySem",
+  .cb_mem = &printBinarySemControlBlock,
+  .cb_size = sizeof(printBinarySemControlBlock),
 };
 /* Definitions for rngBinarySem */
 osSemaphoreId_t rngBinarySemHandle;
+osStaticSemaphoreDef_t rngBinarySemControlBlock;
 const osSemaphoreAttr_t rngBinarySem_attributes = {
-  .name = "rngBinarySem"
+  .name = "rngBinarySem",
+  .cb_mem = &rngBinarySemControlBlock,
+  .cb_size = sizeof(rngBinarySemControlBlock),
 };
 /* USER CODE BEGIN PV */
 static QueueS customer_queue;
@@ -627,7 +639,142 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 
+static unsigned int teller_process(int teller_id)
+{
+  uint8_t buffer1[64];
+  unsigned int random_time;
+  TellerS* teller = &tellers[teller_id - 1];
+  unsigned int init_time_waiting;
+  unsigned int time_waiting;
+  // Generate random time for teller initialization
+  while(1)
+  {
+    if (rngBinarySemHandle != NULL && (osSemaphoreAcquire(rngBinarySemHandle,10) == osOK))
+    {
+      HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
+      osSemaphoreRelease(rngBinarySemHandle);
+      break;
 
+    }
+  }
+
+  init_teller(teller,teller_id - 1,random_time);
+
+  for(;;)
+  {
+    // If it is the end of the and there are no more customers to serve
+    if (master_timer > MAX_TIME && is_empty(&customer_queue))
+    {
+      while(1);
+    }
+
+    // Only process if the teller is available
+    if(teller->status == idle)
+    {
+        // If the teller can, they should go on break
+        // The time until break is the time at which the master_timer will be at when they can take a break
+        if( master_timer >= teller->time_until_break)
+        {
+          while(1)
+          {
+            if (rngBinarySemHandle != NULL && osSemaphoreAcquire(rngBinarySemHandle,0) == osOK)
+            {
+              HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
+              osSemaphoreRelease(rngBinarySemHandle);
+              break;
+
+            }
+          }
+          // Amount of seconds until break
+          init_time_waiting = generate_break_length(random_time);
+          // Value of master timer for when they will take break
+          time_waiting = init_time_waiting + master_timer;
+
+          teller->busy_time = time_waiting;
+          teller->total_time_waiting = init_time_waiting;
+          teller->break_info->num++;
+          update_breaks_metrics(teller->break_info, init_time_waiting);
+          teller->status = on_break;
+          while(1)
+          {
+            if (rngBinarySemHandle != NULL && osSemaphoreAcquire(rngBinarySemHandle,0) == osOK)
+            {
+              HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
+              osSemaphoreRelease(rngBinarySemHandle);
+              break;
+            }
+          }
+          //Since took break, will need a new designated time for when to take a break
+          teller->time_until_break = master_timer + generate_time_until_break(random_time);
+
+        }
+        // Customer interaction processing
+        // Lock the queue info
+        if (myBinarySem01Handle != NULL && osSemaphoreAcquire(myBinarySem01Handle,0) == osOK)
+        {
+          if(customer_queue.size > 0)
+          {
+            CustomerS* customer = dequeue(&customer_queue);
+            // Update teller information based on customer
+            teller->total_served++;
+            teller->total_time_served += customer->interaction_time;
+            // Value of master timer until the teller is available again
+            teller->busy_time = master_timer + customer->interaction_time;
+            teller->status = busy;
+
+            // Calculates the amount of timer a teller had to wait for a customer
+            teller->total_time_waiting = master_timer - teller->time_finished_task;
+            teller->time_finished_task = 0;
+
+            if (customer->interaction_time > teller->max_transaction_time)
+            {
+              teller->max_transaction_time = customer->interaction_time;
+            }
+
+            // Wait time for the customer to be serviced
+            customer_queue.current_wait_time = master_timer - customer->time_joined;
+
+            // If the wait time for that customer
+            if (customer_queue.current_wait_time > customer_queue.max_wait_time)
+            {
+              customer_queue.max_wait_time = customer_queue.current_wait_time;
+            }
+
+            // Add the amount of seconds the customer waited in the queue for (current time - time when they joined)
+            customer_queue.total_wait_time += master_timer - customer->time_joined;
+
+            //sprintf(buffer1,"Teller 1 serving a customer \r\n");
+            //HAL_UART_Transmit(&huart2, buffer1, strlen((char*)buffer1), HAL_MAX_DELAY);
+
+            // Free up the space occupied by the customer
+            vPortFree(customer);
+          }
+          // Unlock queue
+          osSemaphoreRelease (myBinarySem01Handle);
+        }
+    }
+    else if (busy == teller->status)
+    {
+        if(master_timer >= teller->busy_time)
+        {
+            teller->status = idle;
+            teller->time_finished_task = master_timer;
+        }
+    }
+    else // if teller.status == on_break
+    {
+        // Do nothing until break is over
+        if (master_timer >= teller->busy_time)
+        {
+            teller->status = idle;
+            teller->time_finished_task = master_timer;
+        }
+    }
+
+    //sprintf(buffer,"Number of people served by teller 1: %u\r\n", teller.total_served);
+    //HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+  }
+}
 
 
 
@@ -644,18 +791,21 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
 	uint8_t buffer[64];
+	char teller_status[MAX_STATUS_STRING];
 	unsigned int random_time;
+	unsigned int time_for_new_cust;
+  	int hour,minute,diff_seconds;
 
-	while(1)
-	{
-		if (printBinarySemHandle != NULL && osSemaphoreAcquire(printBinarySemHandle,0) == osOK)
-		{
-			sprintf(buffer,"Queue Init\r\n");
+	// while(1)
+	// {
+	// 	if (printBinarySemHandle != NULL && osSemaphoreAcquire(printBinarySemHandle,0) == osOK)
+	// 	{
+	// 		sprintf(buffer,"Queue Init\r\n");
 
-			osSemaphoreRelease(printBinarySemHandle);
-			break;
-		}
-	}
+	// 		osSemaphoreRelease(printBinarySemHandle);
+	// 		break;
+	// 	}
+	// }
 
 	while(1)
 	{
@@ -666,86 +816,111 @@ void StartDefaultTask(void *argument)
 			break;
 		}
 	}
+	while(1)
+	{
+	if (myBinarySem01Handle != NULL && osSemaphoreAcquire(myBinarySem01Handle,0) == osOK)
+	  {
+		  init_queue(&customer_queue,random_time);
+		osSemaphoreRelease(myBinarySem01Handle);
+		break;
+	  }
+	}
 	
-	init_queue(&customer_queue,random_time);
   /* Infinite loop */
 
 
   for(;;)
   {
-	  /*
-	  uint32_t rand;
-	  HAL_RNG_GenerateRandomNumber(&hrng, &rand);
-	  osDelay(1000);
-	  uint8_t buffer[32];
-	  //HAL_UART_Receive(&huart2, buffer, sizeof(buffer), HAL_MAX_DELAY);
-	  sprintf(buffer,"%u\r\n",rand);
-	  HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
-	  */
 
-	if(master_timer > MAX_TIME)
-	{
 
-		while(1)
-		{
-			if (printBinarySemHandle != NULL && osSemaphoreAcquire(printBinarySemHandle,0) == osOK)
-			{
-				sprintf(buffer,"Time exceeded 4:00 pm\r\n");
-				HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
-				osSemaphoreRelease(printBinarySemHandle);
-				break;
-			}
-		}
+    if(master_timer > MAX_TIME)
+    {
+      while(1)
+      {
+        if (printBinarySemHandle != NULL && osSemaphoreAcquire(printBinarySemHandle,0) == osOK)
+        {
+          sprintf(buffer,"Time exceeded 4:00 pm\r\n");
+          HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+          osSemaphoreRelease(printBinarySemHandle);
+          break;
+        }
+      }
+      break;
+    }
 
-		break;
+    if(master_timer >= customer_queue.time_for_new_customer)
+    {
 
-	}
-	if(master_timer >= customer_queue.time_for_new_customer)
-	{
-		while(1)
-		{
-			if (printBinarySemHandle != NULL && osSemaphoreAcquire(printBinarySemHandle,0) == osOK)
-			{
-				sprintf(buffer,"Current size of queue: %u\r\n", customer_queue.size);
-				HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
-				osSemaphoreRelease(printBinarySemHandle);
-				break;
-			}
-		}
+      if (myBinarySem01Handle != NULL && osSemaphoreAcquire(myBinarySem01Handle,0) == osOK)
+      {
+        // Lock queue
+        while(1)
+        {
+          if (rngBinarySemHandle != NULL && osSemaphoreAcquire(rngBinarySemHandle,0) == osOK)
+          {
+            HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
+            osSemaphoreRelease(rngBinarySemHandle);
+            break;
+          }
+        }
 
-		if (myBinarySem01Handle != NULL && osSemaphoreAcquire(myBinarySem01Handle,0) == osOK)
-		{
-			// Lock queue
-			while(1)
-			{
-				if (rngBinarySemHandle != NULL && osSemaphoreAcquire(rngBinarySemHandle,0) == osOK)
-				{
-					HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
-					osSemaphoreRelease(rngBinarySemHandle);
-					break;
+        time_for_new_cust = generate_time_for_new_cust(random_time);
+        customer_queue.time_for_new_customer = time_for_new_cust + master_timer;
 
-				}
-			}
+        while(1)
+        {
+          if (rngBinarySemHandle != NULL && osSemaphoreAcquire(rngBinarySemHandle,0) == osOK)
+          {
+            HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
+            osSemaphoreRelease(rngBinarySemHandle);
+            break;
+          }
+        }
+        add_customer(&customer_queue,random_time);
+        customer_queue.back_node->customer->time_joined = master_timer;
+        // Unlock queue
+        osSemaphoreRelease (myBinarySem01Handle);
+      }
 
-			unsigned int time_for_new_cust = generate_time_for_new_cust(random_time);
-			customer_queue.time_for_new_customer = time_for_new_cust + master_timer;
+      while(1)
+      {
+        if (printBinarySemHandle != NULL && osSemaphoreAcquire(printBinarySemHandle,0) == osOK)
+        {
+          hour = master_timer / SECONDS_IN_HOUR;
+          diff_seconds = master_timer - (hour  * SECONDS_IN_HOUR);
+          minute = diff_seconds / SECONDS_IN_MINUTE;
+          if(3 < hour)
+          {
+            sprintf(buffer,"Current time: %d:%2.d\r\n", hour - 3,minute);
+            HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+          }
+          else
+          {
+          	sprintf(buffer,"Current time: %d:%2.d\r\n", 9+hour,minute);
+          	HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+          }
 
-			while(1)
-			{
-				if (rngBinarySemHandle != NULL && osSemaphoreAcquire(rngBinarySemHandle,0) == osOK)
-				{
-					HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
-					osSemaphoreRelease(rngBinarySemHandle);
-					break;
 
-				}
-			}
-			add_customer(&customer_queue,random_time);
-			customer_queue.back_node->customer->time_joined = master_timer;
-			// Unlock queue
-			osSemaphoreRelease (myBinarySem01Handle);
-		}
-	}
+          sprintf(buffer,"Current size of queue: %u\r\n", customer_queue.size);
+          HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+
+
+          for(int i = 0; i < NUM_TELLERS;i++)
+          {
+          	for(int j=0; j < NUM_STATUSES;j++)
+          	{
+          		if (tellers[i].status == Teller_Statuses[j].status)
+          		{
+          			sprintf(buffer,"Teller Status: %s\r\n", Teller_Statuses[j].status_string);
+  					HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+          		}
+          	}
+          }
+          osSemaphoreRelease(printBinarySemHandle);
+          break;
+        }
+      }
+    }
   }
 
 while(1)
@@ -755,16 +930,16 @@ while(1)
 		sprintf(buffer,"Total number customers served: %u\r\n",customer_queue.total_serviced);
 		HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
 
-		sprintf(buffer,"Teller 1's number of served customers: %u\r\n",tellers[0].total_served);
+    
+		sprintf(buffer,"Teller 1's number of served customers: %u\r\n",tellers[TELLER_1 - 1].total_served);
 		HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
 
 		// Teller 2
-
-		//sprintf(buffer,"Teller 1's number of served customers: %u\r\n",tellers[0].total_served);
-		//HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+		sprintf(buffer,"Teller 2's number of served customers: %u\r\n",tellers[TELLER_2 - 1].total_served);
+		HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
 		// Teller 3
-		//sprintf(buffer,"Teller 1's number of served customers: %u\r\n",tellers[0].total_served);
-		//HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+		sprintf(buffer,"Teller 3's number of served customers: %u\r\n",tellers[TELLER_3 - 1].total_served);
+		HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
 
 		sprintf(buffer,"Average wait time in queue: %u minutes \r\n",(customer_queue.total_wait_time / 60) / (customer_queue.total_serviced));
 		HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
@@ -805,33 +980,33 @@ while(1)
     sprintf(buffer,"Num breaks taken by teller 1: %u\r\n", tellers[0].break_info->num);
     HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
     // Teller 2
-    //sprintf(buffer,"Num breaks taken by teller 2: %u\r\n", tellers[1].break_info->num);
-    //HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+    sprintf(buffer,"Num breaks taken by teller 2: %u\r\n", tellers[1].break_info->num);
+    HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
     //Teller 3
-    //sprintf(buffer,"Num breaks taken by teller 3: %u\r\n", tellers[2].break_info->num);
-    //HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+    sprintf(buffer,"Num breaks taken by teller 3: %u\r\n", tellers[2].break_info->num);
+    HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
     
 
     
     //Teller 1
-    sprintf(buffer,"Average length of breaks taken by teller 1: %u\r\n", tellers[0].break_info->total / tellers[0].break_info->num);
-    HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);    
+    sprintf(buffer,"Average length of breaks taken by teller 1: %u\r\n", tellers[TELLER_1 - 1].break_info->total / tellers[0].break_info->num);
+    HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
     //Teller 2
-    // sprintf(buffer,"Average length of breaks taken by teller 2: %u\r\n", tellers[1].break_info->total / tellers[1].break_info->num);
-    // HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);    
+    sprintf(buffer,"Average length of breaks taken by teller 2: %u\r\n", tellers[1].break_info->total / tellers[1].break_info->num);
+    HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
     //Teller 3
-    // sprintf(buffer,"Average length of breaks taken by teller 3: %u\r\n", tellers[2].break_info->total / tellers[2].break_info->num);
-    // HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);    
+    sprintf(buffer,"Average length of breaks taken by teller 3: %u\r\n", tellers[2].break_info->total / tellers[2].break_info->num);
+    HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
 
     // CHANGE 1 TO NUM_TELLERS
-    for(int i = 0; i < 1;i++)
+    for(int i = 0; i < NUM_TELLERS;i++)
     {
       sprintf(buffer,"Length of longest break taken by teller %u: %u\r\n",i+1, tellers[i].break_info->longest);
       HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);   
     }
     
     // CHANGE 1 TO NUM_TELLERS
-    for(int i = 0; i < 1;i++)
+    for(int i = 0; i < NUM_TELLERS;i++)
     {
       sprintf(buffer,"Length of shortest break taken by teller %u: %u\r\n",i+1, tellers[i].break_info->shortest);
       HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);   
@@ -862,133 +1037,134 @@ void StartTask02(void *argument)
   /* USER CODE BEGIN StartTask02 */
   /* Infinite loop */
 
+    teller_process(TELLER_1);
 
-	  uint8_t buffer1[64];
-	  unsigned int random_time;
-	  TellerS* teller = &tellers[0];
+	  // uint8_t buffer1[64];
+	  // unsigned int random_time;
+	  // TellerS* teller = &tellers[0];
 
-	  while(1)
-		{
-			if (rngBinarySemHandle != NULL && osSemaphoreAcquire(rngBinarySemHandle,0) == osOK)
-			{
-				HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
-				osSemaphoreRelease(rngBinarySemHandle);
-				break;
+	  // while(1)
+		// {
+		// 	if (rngBinarySemHandle != NULL && osSemaphoreAcquire(rngBinarySemHandle,0) == osOK)
+		// 	{
+		// 		HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
+		// 		osSemaphoreRelease(rngBinarySemHandle);
+		// 		break;
 
-			}
-		}
+		// 	}
+		// }
 
-	  init_teller(teller,TELLER_1,random_time);
-
-
-	  for(;;)
-	  {
-	    // If it is the end of the and there are no more customers to serve
-	    if (master_timer > MAX_TIME && is_empty(&customer_queue))
-	    {
-	      while(1);
-	    }
-	    if(teller->status == idle)
-	    {
-	        // If the teller can, they should go on break
-	        // The time until break is the time at which the master_timer will be at when they can take a break
-	        if( master_timer>= teller->time_until_break)
-	        {
-	        	while(1)
-				{
-					if (rngBinarySemHandle != NULL && osSemaphoreAcquire(rngBinarySemHandle,0) == osOK)
-					{
-						HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
-						osSemaphoreRelease(rngBinarySemHandle);
-						break;
-
-					}
-				}
-	            unsigned int init_time_waiting= generate_break_length(random_time);
-	            unsigned int time_waiting = init_time_waiting + master_timer;
-
-	            teller->busy_time = time_waiting;
-	            teller->total_time_waiting = init_time_waiting;
-	            teller->break_info->num++;
-	            update_breaks_metrics(teller->break_info, init_time_waiting);
-	            teller->status = on_break;
-	        	while(1)
-				{
-					if (rngBinarySemHandle != NULL && osSemaphoreAcquire(rngBinarySemHandle,0) == osOK)
-					{
-						HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
-						osSemaphoreRelease(rngBinarySemHandle);
-						break;
-
-					}
-				}
-	            teller->time_until_break = master_timer + generate_time_until_break(random_time);
-
-	            //sprintf(buffer1,"Teller taking break. \r\n");
-				      //HAL_UART_Transmit(&huart2, buffer1, strlen((char*)buffer1), HAL_MAX_DELAY);
-	        }
-	        // Lock the queue info
-	        if (myBinarySem01Handle != NULL && osSemaphoreAcquire(myBinarySem01Handle,0) == osOK){
-	          if(customer_queue.size > 0)
-	          {
-	              CustomerS* customer = dequeue(&customer_queue);
-	              // Update teller information based on customer
-	              teller->total_served++;
-	              teller->total_time_served += customer->interaction_time;
-	              teller->busy_time = master_timer + customer->interaction_time;
-	              teller->status = busy;
-	              teller->total_time_waiting = master_timer - teller->time_finished_task;
-	              teller->time_finished_task = 0;
-
-	              if (customer->interaction_time > teller->max_transaction_time)
-	              {
-	                teller->max_transaction_time = customer->interaction_time;
-	              }
-
-	              // Wait time for the customer to be serviced
-	              customer_queue.current_wait_time = master_timer - customer->time_joined;
-	              // If the wait time for that customer
-	              if (customer_queue.current_wait_time > customer_queue.max_wait_time)
-	              {
-	                customer_queue.max_wait_time = customer_queue.current_wait_time;
-	              }
-
-	              // Add the amount of seconds the customer waited in the queue for (current time - time when they joined)
-	              customer_queue.total_wait_time += master_timer - customer->time_joined;
-	              //sprintf(buffer1,"Teller 1 serving a customer \r\n");
-				        //HAL_UART_Transmit(&huart2, buffer1, strlen((char*)buffer1), HAL_MAX_DELAY);
+	  // init_teller(teller,TELLER_1,random_time);
 
 
-	              // Free up the space occupied by the customer
-	              vPortFree(customer);
+	  // for(;;)
+	  // {
+	  //   // If it is the end of the and there are no more customers to serve
+	  //   if (master_timer > MAX_TIME && is_empty(&customer_queue))
+	  //   {
+	  //     while(1);
+	  //   }
+	  //   if(teller->status == idle)
+	  //   {
+	  //       // If the teller can, they should go on break
+	  //       // The time until break is the time at which the master_timer will be at when they can take a break
+	  //       if( master_timer>= teller->time_until_break)
+	  //       {
+	  //       	while(1)
+		// 		{
+		// 			if (rngBinarySemHandle != NULL && osSemaphoreAcquire(rngBinarySemHandle,0) == osOK)
+		// 			{
+		// 				HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
+		// 				osSemaphoreRelease(rngBinarySemHandle);
+		// 				break;
 
-	              // Unlock queue
+		// 			}
+		// 		}
+	  //           unsigned int init_time_waiting= generate_break_length(random_time);
+	  //           unsigned int time_waiting = init_time_waiting + master_timer;
 
-	          }
-	          osSemaphoreRelease (myBinarySem01Handle);
-	        }
+	  //           teller->busy_time = time_waiting;
+	  //           teller->total_time_waiting = init_time_waiting;
+	  //           teller->break_info->num++;
+	  //           update_breaks_metrics(teller->break_info, init_time_waiting);
+	  //           teller->status = on_break;
+	  //       	while(1)
+		// 		{
+		// 			if (rngBinarySemHandle != NULL && osSemaphoreAcquire(rngBinarySemHandle,0) == osOK)
+		// 			{
+		// 				HAL_RNG_GenerateRandomNumber(&hrng, &random_time);
+		// 				osSemaphoreRelease(rngBinarySemHandle);
+		// 				break;
 
-	    }
-	    else if (busy == teller->status)
-	    {
-	        if(master_timer >= teller->busy_time)
-	        {
-	            teller->status = idle;
-	            teller->time_finished_task = master_timer;
-	        }
-	    }
-	    else // if teller.status == on_break
-	    {
-	        if (master_timer >= teller->busy_time)
-	        {
-	            teller->status = idle;
-	            teller->time_finished_task = master_timer;
-	        }
-	    }
+		// 			}
+		// 		}
+	  //           teller->time_until_break = master_timer + generate_time_until_break(random_time);
 
-	    //sprintf(buffer,"Number of people served by teller 1: %u\r\n", teller.total_served);
-	    //HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
-	  }
+	  //           //sprintf(buffer1,"Teller taking break. \r\n");
+		// 		      //HAL_UART_Transmit(&huart2, buffer1, strlen((char*)buffer1), HAL_MAX_DELAY);
+	  //       }
+	  //       // Lock the queue info
+	  //       if (myBinarySem01Handle != NULL && osSemaphoreAcquire(myBinarySem01Handle,0) == osOK){
+	  //         if(customer_queue.size > 0)
+	  //         {
+	  //             CustomerS* customer = dequeue(&customer_queue);
+	  //             // Update teller information based on customer
+	  //             teller->total_served++;
+	  //             teller->total_time_served += customer->interaction_time;
+	  //             teller->busy_time = master_timer + customer->interaction_time;
+	  //             teller->status = busy;
+	  //             teller->total_time_waiting = master_timer - teller->time_finished_task;
+	  //             teller->time_finished_task = 0;
+
+	  //             if (customer->interaction_time > teller->max_transaction_time)
+	  //             {
+	  //               teller->max_transaction_time = customer->interaction_time;
+	  //             }
+
+	  //             // Wait time for the customer to be serviced
+	  //             customer_queue.current_wait_time = master_timer - customer->time_joined;
+	  //             // If the wait time for that customer
+	  //             if (customer_queue.current_wait_time > customer_queue.max_wait_time)
+	  //             {
+	  //               customer_queue.max_wait_time = customer_queue.current_wait_time;
+	  //             }
+
+	  //             // Add the amount of seconds the customer waited in the queue for (current time - time when they joined)
+	  //             customer_queue.total_wait_time += master_timer - customer->time_joined;
+	  //             //sprintf(buffer1,"Teller 1 serving a customer \r\n");
+		// 		        //HAL_UART_Transmit(&huart2, buffer1, strlen((char*)buffer1), HAL_MAX_DELAY);
+
+
+	  //             // Free up the space occupied by the customer
+	  //             vPortFree(customer);
+
+	  //             // Unlock queue
+
+	  //         }
+	  //         osSemaphoreRelease (myBinarySem01Handle);
+	  //       }
+
+	  //   }
+	  //   else if (busy == teller->status)
+	  //   {
+	  //       if(master_timer >= teller->busy_time)
+	  //       {
+	  //           teller->status = idle;
+	  //           teller->time_finished_task = master_timer;
+	  //       }
+	  //   }
+	  //   else // if teller.status == on_break
+	  //   {
+	  //       if (master_timer >= teller->busy_time)
+	  //       {
+	  //           teller->status = idle;
+	  //           teller->time_finished_task = master_timer;
+	  //       }
+	  //   }
+
+	  //   //sprintf(buffer,"Number of people served by teller 1: %u\r\n", teller.total_served);
+	  //   //HAL_UART_Transmit(&huart2, buffer, strlen((char*)buffer), HAL_MAX_DELAY);
+	  // }
 
   /* USER CODE END StartTask02 */
 }
@@ -1004,6 +1180,7 @@ void StartTask03(void *argument)
 {
   /* USER CODE BEGIN StartTask03 */
   /* Infinite loop */
+  teller_process(TELLER_2);
 	for(;;)
 	  {
 	    osDelay(1);
@@ -1131,6 +1308,7 @@ void StartTask04(void *argument)
 {
   /* USER CODE BEGIN StartTask04 */
   /* Infinite loop */
+  teller_process(TELLER_3);
   for(;;)
   {
     osDelay(1);

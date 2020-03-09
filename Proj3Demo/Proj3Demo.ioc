@@ -1,5 +1,5 @@
 #MicroXplorer Configuration settings - do not modify
-FREERTOS.BinarySemaphores01=myBinarySem01,Dynamic,NULL;printBinarySem,Dynamic,NULL;rngBinarySem,Dynamic,NULL
+FREERTOS.BinarySemaphores01=myBinarySem01,Static,myBinarySem01ControlBlock;printBinarySem,Static,printBinarySemControlBlock;rngBinarySem,Static,rngBinarySemControlBlock
 FREERTOS.FootprintOK=true
 FREERTOS.HEAP_NUMBER=4
 FREERTOS.INCLUDE_pcTaskGetTaskName=1

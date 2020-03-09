@@ -27,6 +27,7 @@ typedef struct Break_S
 
 } BreakS;
 
+void init_breaks(BreakS* break_info);
 void update_breaks_metrics(BreakS* break_info, uint32_t break_length);
 unsigned int generate_break_length(unsigned int random_time);
 unsigned int generate_time_until_break(unsigned int random_time);

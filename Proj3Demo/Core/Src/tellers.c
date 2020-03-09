@@ -6,15 +6,13 @@
 #include "my_queue.h"
 #include "customers.h"
 
-//static TellerS teller;
-//static int master_timer;
 
 /**
  * Initialization of a teller struct
  * [TellerS*] teller - pointer to a teller
  * [uint16_t] id     - Id number to initialize the teller with
  * */
-void init_teller(TellerS* teller,uint16_t id, unsigned int random_time)
+void init_teller(TellerS* teller, uint16_t id, unsigned int random_time)
 {
     teller->total_served = 0;
     teller->total_time_served = 0;
@@ -27,6 +25,7 @@ void init_teller(TellerS* teller,uint16_t id, unsigned int random_time)
     teller->max_transaction_time = 0;
     teller->max_wait_time = 0;
     teller->time_finished_task = 0;
+    init_breaks(teller->break_info);
 }
 
 

@@ -3,6 +3,13 @@
 #include <stdint.h>
 #include "breaks.h"
 
+void init_breaks(BreakS* break_info)
+{
+    break_info->num = 0;
+    break_info->total = 0;
+    break_info->shortest = 99999; // Abitrarily long nubmer
+    break_info->longest = 0;
+}
 /**
  * Updates the metrics of the break info for a teller
  * [BreakS*]  break_info   - Pointer to the break information to be changed
